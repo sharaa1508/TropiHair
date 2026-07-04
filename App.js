@@ -4,6 +4,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Text } from "react-native";
 
+import LoginScreen from "./screens/LoginScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ScanScreen from "./screens/ScanScreen";
 import ResultsScreen from "./screens/ResultsScreen";
@@ -16,7 +17,6 @@ import HairLossAssessmentScreen from "./screens/HairLossAssessmentScreen";
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Bottom Tab Navigator
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -32,11 +32,8 @@ function MainTabs() {
         },
         tabBarActiveTintColor: "#52B788",
         tabBarInactiveTintColor: "#A8DADC",
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "bold",
-        },
-        tabBarIcon: ({ focused, color }) => {
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "bold" },
+        tabBarIcon: ({ focused }) => {
           let icon;
           if (route.name === "Home") icon = focused ? "🏠" : "🏡";
           else if (route.name === "Scan") icon = "📸";
@@ -54,14 +51,14 @@ function MainTabs() {
   );
 }
 
-// Main App with Stack
 export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Onboarding"
+        initialRouteName="Login"
         screenOptions={{ headerShown: false }}
       >
+        <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen
           name="HairLossAssessment"
