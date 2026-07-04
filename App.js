@@ -7,6 +7,8 @@ import ResultsScreen from "./screens/ResultsScreen";
 import RoutineScreen from "./screens/RoutineScreen";
 import RecommendationsScreen from "./screens/RecommendationsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
+import OnboardingScreen from "./screens/OnboardingScreen";
+import HairLossAssessmentScreen from "./screens/HairLossAssessmentScreen";
 
 const Stack = createStackNavigator();
 
@@ -14,7 +16,7 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Home"
+        initialRouteName="Onboarding"
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Home" component={HomeScreen} />
@@ -25,6 +27,11 @@ export default function App() {
           name="Recommendations"
           component={RecommendationsScreen}
         />
+        <Stack.Screen
+          name="HairLossAssessment"
+          component={HairLossAssessmentScreen}
+        />
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
