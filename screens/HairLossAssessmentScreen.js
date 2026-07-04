@@ -318,7 +318,7 @@ export default function HairLossAssessmentScreen({ navigation }) {
 
         <TouchableOpacity
           style={styles.homeBtn}
-          onPress={() => navigation.replace("Home")}
+          onPress={() => navigation.replace("'Main")}
         >
           <Text style={styles.homeBtnText}>🏠 Go to Home</Text>
         </TouchableOpacity>
@@ -405,7 +405,7 @@ export default function HairLossAssessmentScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={() => navigation.replace("Home")}>
+      <TouchableOpacity onPress={() => navigation.replace("Main")}>
         <Text style={styles.skipText}>Skip assessment</Text>
       </TouchableOpacity>
     </ScrollView>

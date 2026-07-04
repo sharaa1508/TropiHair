@@ -82,7 +82,7 @@ export default function OnboardingScreen({ navigation }) {
       if (answers.mainConcern === "Hair Loss / Thinning") {
         navigation.replace("HairLossAssessment");
       } else {
-        navigation.replace("Home");
+        navigation.replace("Main");
       }
     }
   };
@@ -173,7 +173,7 @@ export default function OnboardingScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={() => navigation.replace("Home")}>
+      <TouchableOpacity onPress={() => navigation.replace("Main")}>
         <Text style={styles.skipText}>Skip for now</Text>
       </TouchableOpacity>
     </View>
