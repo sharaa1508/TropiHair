@@ -151,7 +151,10 @@ export default function ProfileScreen({ navigation }) {
         <TouchableOpacity style={styles.doctorBtn}>
           <Text style={styles.doctorBtnText}>📤 Share Health Report</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.findDoctorBtn}>
+        <TouchableOpacity
+          style={styles.findDoctorBtn}
+          onPress={() => navigation.navigate("DoctorConsultation")}
+        >
           <Text style={styles.findDoctorBtnText}>🏥 Find Nearby Doctors</Text>
         </TouchableOpacity>
       </View>
