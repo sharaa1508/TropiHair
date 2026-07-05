@@ -12,7 +12,15 @@ export default function HomeScreen({ navigation }) {
     <ScrollView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>🌿 TropiHair</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.logo}>🌿 TropiHair</Text>
+          <TouchableOpacity
+            style={styles.bellBtn}
+            onPress={() => navigation.navigate("Notifications")}
+          >
+            <Text style={styles.bellIcon}>🔔</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.tagline}>Smart Scalp & Hair Care</Text>
       </View>
 
@@ -78,7 +86,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   header: { marginBottom: 24 },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   logo: { fontSize: 28, fontWeight: "bold", color: "#52B788" },
+  bellBtn: {
+    backgroundColor: "#1B2A3B",
+    borderRadius: 12,
+    padding: 8,
+  },
+  bellIcon: { fontSize: 20 },
   tagline: { fontSize: 14, color: "#A8DADC", marginTop: 4 },
   card: {
     backgroundColor: "#1B2A3B",
