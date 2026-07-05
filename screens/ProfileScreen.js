@@ -148,7 +148,10 @@ export default function ProfileScreen({ navigation }) {
         <Text style={styles.doctorText}>
           Share your health history with a dermatologist
         </Text>
-        <TouchableOpacity style={styles.doctorBtn}>
+        <TouchableOpacity
+          style={styles.doctorBtn}
+          onPress={() => navigation.navigate("BeforeAfter")}
+        >
           <Text style={styles.doctorBtnText}>📤 Share Health Report</Text>
         </TouchableOpacity>
         <TouchableOpacity
