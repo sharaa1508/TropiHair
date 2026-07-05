@@ -13,6 +13,7 @@ import RecommendationsScreen from "./screens/RecommendationsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import OnboardingScreen from "./screens/OnboardingScreen";
 import HairLossAssessmentScreen from "./screens/HairLossAssessmentScreen";
+import IngredientScannerScreen from "./screens/IngredientScannerScreen";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -63,6 +64,10 @@ export default function App() {
         <Stack.Screen
           name="HairLossAssessment"
           component={HairLossAssessmentScreen}
+        />
+        <Stack.Screen
+          name="IngredientScanner"
+          component={IngredientScannerScreen}
         />
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="Results" component={ResultsScreen} />

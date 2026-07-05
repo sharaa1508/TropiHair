@@ -50,7 +50,7 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.quickBtn}
-          onPress={() => navigation.navigate("Recommendations")}
+          onPress={() => navigation.navigate("IngredientScanner")}
         >
           <Text style={styles.quickIcon}>💊</Text>
           <Text style={styles.quickText}>Tips</Text>
