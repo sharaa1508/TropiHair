@@ -17,11 +17,14 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       {/* Health Score Card */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Hair Health Score</Text>
-        <Text style={styles.score}>74</Text>
-        <Text style={styles.scoreLabel}>/ 100 · Good</Text>
-      </View>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => navigation.navigate("Weather")}
+      >
+        <Text style={styles.cardTitle}>🌡️ Weather & Hair Care</Text>
+        <Text style={styles.score}>32°</Text>
+        <Text style={styles.scoreLabel}>Tap to see scalp advice</Text>
+      </TouchableOpacity>
 
       {/* Today's Tasks */}
       <View style={styles.taskCard}>

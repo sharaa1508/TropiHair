@@ -14,6 +14,7 @@ import ProfileScreen from "./screens/ProfileScreen";
 import OnboardingScreen from "./screens/OnboardingScreen";
 import HairLossAssessmentScreen from "./screens/HairLossAssessmentScreen";
 import IngredientScannerScreen from "./screens/IngredientScannerScreen";
+import WeatherScreen from "./screens/WeatherScreen";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -69,6 +70,7 @@ export default function App() {
           name="IngredientScanner"
           component={IngredientScannerScreen}
         />
+        <Stack.Screen name="Weather" component={WeatherScreen} />
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="Results" component={ResultsScreen} />
         <Stack.Screen
