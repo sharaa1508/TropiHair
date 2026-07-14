@@ -9,6 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { auth, db } from "../firebaseConfig";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+} from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { Alert, ActivityIndicator } from "react-native";
 
 export default function LoginScreen({ navigation }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,10 +23,61 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
-    // Firebase Auth later connect pannuvom
-    navigation.replace("Onboarding");
+  const handleSubmit = async () => {
+    // Basic validation
+    if (!email || !password) {
+      Alert.alert("Missing Info", "Please enter email and password.");
+      return;
+    }
+    if (!isLogin && !name) {
+      Alert.alert("Missing Info", "Please enter your name.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (isLogin) {
+        // LOGIN - existing user
+        await signInWithEmailAndPassword(auth, email, password);
+        navigation.replace("Main");
+      } else {
+        // SIGN UP - new user
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password,
+        );
+        // Save user name to Firestore
+        await setDoc(doc(db, "users", userCredential.user.uid), {
+          name: name,
+          email: email,
+          createdAt: new Date().toISOString(),
+        });
+        navigation.replace("Onboarding");
+      }
+    } catch (error) {
+      // Firebase errors user-friendly-a maathuvom
+      let message = "Something went wrong. Please try again.";
+      if (error.code === "auth/email-already-in-use") {
+        message = "This email is already registered. Please login.";
+      } else if (error.code === "auth/invalid-email") {
+        message = "Please enter a valid email address.";
+      } else if (error.code === "auth/weak-password") {
+        message = "Password should be at least 6 characters.";
+      } else if (
+        error.code === "auth/wrong-password" ||
+        error.code === "auth/invalid-credential"
+      ) {
+        message = "Incorrect email or password.";
+      } else if (error.code === "auth/user-not-found") {
+        message = "No account found. Please sign up first.";
+      }
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -127,10 +185,18 @@ export default function LoginScreen({ navigation }) {
           )}
 
           {/* Submit Button */}
-          <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
-            <Text style={styles.submitBtnText}>
-              {isLogin ? "🚀 Login" : "✅ Create Account"}
-            </Text>
+          <TouchableOpacity
+            style={styles.submitBtn}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitBtnText}>
+                {isLogin ? "🚀 Login" : "✅ Create Account"}
+              </Text>
+            )}
           </TouchableOpacity>
 
           {/* Divider */}

@@ -6,10 +6,71 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  Alert,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 
 export default function ScanScreen({ navigation }) {
   const [selectedImage, setSelectedImage] = useState(null);
+
+  // Take photo with camera
+  const takePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "Permission Needed",
+        "Camera access is required to scan your scalp. Please enable it in settings.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  // Pick photo from gallery
+  const pickFromGallery = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "Permission Needed",
+        "Gallery access is required to select a photo.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  // Analyze - image venum
+  const handleAnalyze = () => {
+    if (!selectedImage) {
+      Alert.alert(
+        "No Image",
+        "Please take a photo or choose one from your gallery first.",
+      );
+      return;
+    }
+    // Image uri-ai Results screen ku anuppurom (later API call add pannuvom)
+    navigation.navigate("Results", { imageUri: selectedImage });
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -45,19 +106,29 @@ export default function ScanScreen({ navigation }) {
         )}
       </View>
 
+      {/* Retake option - image irundha mattum */}
+      {selectedImage && (
+        <TouchableOpacity
+          style={styles.clearBtn}
+          onPress={() => setSelectedImage(null)}
+        >
+          <Text style={styles.clearBtnText}>✕ Remove Image</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Upload Buttons */}
-      <TouchableOpacity style={styles.cameraBtn}>
+      <TouchableOpacity style={styles.cameraBtn} onPress={takePhoto}>
         <Text style={styles.cameraBtnText}>📸 Take Photo</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.galleryBtn}>
+      <TouchableOpacity style={styles.galleryBtn} onPress={pickFromGallery}>
         <Text style={styles.galleryBtnText}>🖼️ Choose from Gallery</Text>
       </TouchableOpacity>
 
       {/* Analyze Button */}
       <TouchableOpacity
-        style={styles.analyzeBtn}
-        onPress={() => navigation.navigate("Results")}
+        style={[styles.analyzeBtn, !selectedImage && styles.analyzeBtnDisabled]}
+        onPress={handleAnalyze}
       >
         <Text style={styles.analyzeBtnText}>🔍 Analyze Now</Text>
       </TouchableOpacity>
@@ -104,13 +175,20 @@ const styles = StyleSheet.create({
     height: 220,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 12,
     overflow: "hidden",
   },
   previewImage: { width: "100%", height: "100%" },
   placeholder: { alignItems: "center" },
   placeholderIcon: { fontSize: 48, marginBottom: 8 },
   placeholderText: { color: "#A8DADC", fontSize: 14 },
+  clearBtn: {
+    alignSelf: "center",
+    marginBottom: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  clearBtnText: { color: "#E63946", fontSize: 13 },
   cameraBtn: {
     backgroundColor: "#52B788",
     borderRadius: 16,
@@ -136,6 +214,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
+  analyzeBtnDisabled: { backgroundColor: "#1B2A3B" },
   analyzeBtnText: { color: "#FFFFFF", fontSize: 18, fontWeight: "bold" },
   disclaimer: {
     color: "#666",

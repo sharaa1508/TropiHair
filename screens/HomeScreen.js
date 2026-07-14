@@ -5,26 +5,65 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from "react-native";
+import { auth } from "../firebaseConfig";
+import { signOut } from "firebase/auth";
 
 export default function HomeScreen({ navigation }) {
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            // Tab navigator -> parent stack navigator
+            const parent = navigation.getParent();
+            if (parent) {
+              parent.reset({
+                index: 0,
+                routes: [{ name: "Login" }],
+              });
+            } else {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Login" }],
+              });
+            }
+          } catch (error) {
+            console.log("Logout error:", error);
+            Alert.alert("Error", "Could not logout. Please try again.");
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <ScrollView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Text style={styles.logo}>🌿 TropiHair</Text>
-          <TouchableOpacity
-            style={styles.bellBtn}
-            onPress={() => navigation.navigate("Notifications")}
-          >
-            <Text style={styles.bellIcon}>🔔</Text>
-          </TouchableOpacity>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => navigation.navigate("Notifications")}
+            >
+              <Text style={styles.bellIcon}>🔔</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleLogout}>
+              <Text style={styles.bellIcon}>🚪</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.tagline}>Smart Scalp & Hair Care</Text>
       </View>
 
-      {/* Health Score Card */}
+      {/* Weather Card */}
       <TouchableOpacity
         style={styles.card}
         onPress={() => navigation.navigate("Weather")}
@@ -92,7 +131,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: { fontSize: 28, fontWeight: "bold", color: "#52B788" },
-  bellBtn: {
+  headerIcons: { flexDirection: "row", gap: 8 },
+  iconBtn: {
     backgroundColor: "#1B2A3B",
     borderRadius: 12,
     padding: 8,

@@ -7,6 +7,8 @@ import {
   ScrollView,
   Image,
 } from "react-native";
+import { auth, db } from "../firebaseConfig";
+import { doc, setDoc } from "firebase/firestore";
 
 export default function OnboardingScreen({ navigation }) {
   const [step, setStep] = useState(0);
@@ -74,11 +76,34 @@ export default function OnboardingScreen({ navigation }) {
     setAnswers((prev) => ({ ...prev, [currentQ.key]: option }));
   };
 
-  const goNext = () => {
+  const goNext = async () => {
     if (step < questions.length - 1) {
       setStep(step + 1);
     } else {
-      // If hair loss concern, go to assessment
+      // Last step - Firestore la save pannuvom
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          // Existing user document la onboarding answers merge pannuvom
+          await setDoc(
+            doc(db, "users", user.uid),
+            {
+              gender: answers.gender,
+              ageGroup: answers.age,
+              hairType: answers.hairType,
+              mainConcern: answers.mainConcern,
+              onboardingDone: true,
+              updatedAt: new Date().toISOString(),
+            },
+            { merge: true }, // Name/email vera fields kedaikaama, merge pannum
+          );
+        }
+      } catch (error) {
+        console.log("Onboarding save error:", error);
+        // Save fail aanaalum app block pannaama, tholaikaama continue pannuvom
+      }
+
+      // Navigate (existing logic same)
       if (answers.mainConcern === "Hair Loss / Thinning") {
         navigation.replace("HairLossAssessment");
       } else {
@@ -172,10 +197,6 @@ export default function OnboardingScreen({ navigation }) {
           </Text>
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity onPress={() => navigation.replace("Main")}>
-        <Text style={styles.skipText}>Skip for now</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -272,11 +293,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   nextBtnDisabled: { backgroundColor: "#1B2A3B" },
-  nextBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "bold" },
-  skipText: {
-    color: "#666",
-    fontSize: 13,
-    textAlign: "center",
-    textDecorationLine: "underline",
-  },
+  nextBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "bold" }
 });
