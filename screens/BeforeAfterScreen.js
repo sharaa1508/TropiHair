@@ -157,7 +157,7 @@ export default function BeforeAfterScreen({ navigation }) {
           {/* Add New Photo */}
           <TouchableOpacity
             style={styles.addPhotoBtn}
-            onPress={() => navigation.navigate("Scan")}
+            onPress={() => navigation.navigate("Main", { screen: "Scan" })}
           >
             <Text style={styles.addPhotoBtnText}>📸 Add New Scan Photo</Text>
           </TouchableOpacity>

@@ -1,22 +1,61 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Image,
 } from "react-native";
+import { auth, db } from "../firebaseConfig";
+import { collection, addDoc } from "firebase/firestore";
 
-export default function ResultsScreen({ navigation }) {
-  // Mock data — later AI model result connect pannuvom
-  const result = {
-    condition: "Folliculitis",
-    severity: "Moderate",
-    confidence: 87,
-    description:
-      "Folliculitis is an infection of the hair follicles, commonly caused by bacteria. It appears as small red bumps or pimples around hair follicles.",
-    severityColor: "#F4A261",
+export default function ResultsScreen({ navigation, route }) {
+  const apiResult = route?.params?.result;
+  const imageUri = route?.params?.imageUri;
+
+  const getSeverity = (confidence) => {
+    if (confidence >= 85) return { label: "High Confidence", color: "#52B788" };
+    if (confidence >= 70) return { label: "Moderate", color: "#F4A261" };
+    return { label: "Low Confidence", color: "#E63946" };
   };
+
+  const result = apiResult
+    ? {
+        condition: apiResult.condition,
+        confidence: apiResult.confidence,
+        description: apiResult.description,
+        top3: apiResult.top3 || [],
+        ...getSeverity(apiResult.confidence),
+      }
+    : {
+        condition: "No Scan Yet",
+        confidence: 0,
+        description: "Please scan your scalp first to see results.",
+        top3: [],
+        label: "N/A",
+        color: "#A8DADC",
+      };
+
+  // Save this scan to Firestore history (once, when a real result arrives)
+  useEffect(() => {
+    const saveScan = async () => {
+      const user = auth.currentUser;
+      if (!user || !apiResult) return;
+      try {
+        await addDoc(collection(db, "users", user.uid, "scans"), {
+          condition: apiResult.condition,
+          confidence: apiResult.confidence,
+          description: apiResult.description || "",
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.log("Scan save error:", error);
+        // Don't block the UI if saving fails
+      }
+    };
+    saveScan();
+  }, []);
 
   return (
     <ScrollView style={styles.container}>
@@ -29,22 +68,22 @@ export default function ResultsScreen({ navigation }) {
         <View />
       </View>
 
+      {/* Scanned Image */}
+      {imageUri && (
+        <View style={styles.imageBox}>
+          <Image source={{ uri: imageUri }} style={styles.scanImage} />
+        </View>
+      )}
+
       {/* Result Card */}
       <View style={styles.resultCard}>
         <Text style={styles.conditionLabel}>Detected Condition</Text>
         <Text style={styles.conditionName}>{result.condition}</Text>
 
-        {/* Severity Badge */}
-        <View
-          style={[
-            styles.severityBadge,
-            { backgroundColor: result.severityColor },
-          ]}
-        >
-          <Text style={styles.severityText}>{result.severity}</Text>
+        <View style={[styles.severityBadge, { backgroundColor: result.color }]}>
+          <Text style={styles.severityText}>{result.label}</Text>
         </View>
 
-        {/* Confidence */}
         <Text style={styles.confidence}>
           AI Confidence: {result.confidence}%
         </Text>
@@ -61,40 +100,53 @@ export default function ResultsScreen({ navigation }) {
         <Text style={styles.descText}>{result.description}</Text>
       </View>
 
-      {/* Severity Levels */}
+      {/* Other Possibilities */}
+      {result.top3.length > 1 && (
+        <View style={styles.top3Card}>
+          <Text style={styles.top3Title}>🔍 Other Possibilities</Text>
+          {result.top3.map((item, index) => (
+            <View key={index} style={styles.top3Row}>
+              <Text style={styles.top3Condition}>{item.condition}</Text>
+              <Text style={styles.top3Confidence}>{item.confidence}%</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Confidence Guide */}
       <View style={styles.severityCard}>
-        <Text style={styles.severityTitle}>📊 Severity Levels</Text>
+        <Text style={styles.severityTitle}>📊 Confidence Guide</Text>
         <View style={styles.severityRow}>
           <View style={[styles.severityDot, { backgroundColor: "#52B788" }]} />
-          <Text style={styles.severityLabel}>
-            Mild — Early stage, manageable at home
-          </Text>
+          <Text style={styles.severityLabel}>High (85%+) — Strong match</Text>
         </View>
         <View style={styles.severityRow}>
           <View style={[styles.severityDot, { backgroundColor: "#F4A261" }]} />
           <Text style={styles.severityLabel}>
-            Moderate — Treatment recommended
+            Moderate (70-85%) — Likely match
           </Text>
         </View>
         <View style={styles.severityRow}>
           <View style={[styles.severityDot, { backgroundColor: "#E63946" }]} />
-          <Text style={styles.severityLabel}>
-            Severe — See a doctor immediately
-          </Text>
+          <Text style={styles.severityLabel}>Low — Consider rescanning</Text>
         </View>
       </View>
 
       {/* Action Buttons */}
       <TouchableOpacity
         style={styles.primaryBtn}
-        onPress={() => navigation.navigate("Recommendations")}
+        onPress={() =>
+          navigation.navigate("Recommendations", {
+            condition: result.condition,
+          })
+        }
       >
         <Text style={styles.primaryBtnText}>💊 View Recommendations</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.secondaryBtn}
-        onPress={() => navigation.navigate("Home")}
+        onPress={() => navigation.navigate("Main", { screen: "Home" })}
       >
         <Text style={styles.secondaryBtnText}>🏠 Back to Home</Text>
       </TouchableOpacity>
@@ -117,6 +169,13 @@ const styles = StyleSheet.create({
   },
   backBtn: { color: "#52B788", fontSize: 16 },
   title: { color: "#FFFFFF", fontSize: 20, fontWeight: "bold" },
+  imageBox: {
+    borderRadius: 16,
+    height: 180,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  scanImage: { width: "100%", height: "100%" },
   resultCard: {
     backgroundColor: "#1B2A3B",
     borderRadius: 16,
@@ -130,6 +189,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     marginBottom: 12,
+    textAlign: "center",
   },
   severityBadge: {
     paddingHorizontal: 20,
@@ -164,6 +224,27 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   descText: { color: "#A8DADC", fontSize: 13, lineHeight: 20 },
+  top3Card: {
+    backgroundColor: "#1B2A3B",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  top3Title: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+  top3Row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#0D1B2A",
+  },
+  top3Condition: { color: "#A8DADC", fontSize: 14 },
+  top3Confidence: { color: "#52B788", fontSize: 14, fontWeight: "bold" },
   severityCard: {
     backgroundColor: "#1B2A3B",
     borderRadius: 16,

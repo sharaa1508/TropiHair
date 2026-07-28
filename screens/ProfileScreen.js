@@ -1,166 +1,196 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
+import { auth, db } from "../firebaseConfig";
+import { signOut } from "firebase/auth";
+import {
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+  query,
+  orderBy,
+} from "firebase/firestore";
 
 export default function ProfileScreen({ navigation }) {
-  const [language, setLanguage] = useState("English");
+  const [profile, setProfile] = useState(null);
+  const [scans, setScans] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const profile = {
-    name: "Thusharaa",
-    hairType: "Wavy",
-    scalpType: "Oily",
-    waterType: "Hard Water",
-    lifestyle: "Active",
-    lastScan: "Today, 8:15 AM",
-    condition: "Folliculitis",
-    severity: "Moderate",
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    try {
+      // User profile
+      const profileSnap = await getDoc(doc(db, "users", user.uid));
+      if (profileSnap.exists()) {
+        setProfile({ email: user.email, ...profileSnap.data() });
+      } else {
+        setProfile({ email: user.email });
+      }
+
+      // Scan history (newest first)
+      const scansQuery = query(
+        collection(db, "users", user.uid, "scans"),
+        orderBy("timestamp", "desc"),
+      );
+      const scansSnap = await getDocs(scansQuery);
+      const scanList = scansSnap.docs.map((d) => d.data());
+      setScans(scanList);
+    } catch (error) {
+      console.log("Profile load error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const scanHistory = [
-    {
-      date: "Jul 4, 2026",
-      condition: "Folliculitis",
-      severity: "Moderate",
-      color: "#F4A261",
-    },
-    {
-      date: "Jun 28, 2026",
-      condition: "Dandruff",
-      severity: "Mild",
-      color: "#52B788",
-    },
-    {
-      date: "Jun 15, 2026",
-      condition: "Folliculitis",
-      severity: "Severe",
-      color: "#E63946",
-    },
-  ];
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            const parent = navigation.getParent();
+            (parent || navigation).reset({
+              index: 0,
+              routes: [{ name: "Login" }],
+            });
+          } catch (error) {
+            Alert.alert("Error", "Could not logout. Please try again.");
+          }
+        },
+      },
+    ]);
+  };
+
+  const formatDate = (iso) => {
+    try {
+      const d = new Date(iso);
+      return (
+        d.toLocaleDateString() +
+        " " +
+        d.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
+    } catch {
+      return "";
+    }
+  };
+
+  const initial = (profile?.name || profile?.email || "U")
+    .charAt(0)
+    .toUpperCase();
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color="#52B788" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtn}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>My Profile</Text>
-        <View />
-      </View>
+      <Text style={styles.title}>Profile</Text>
 
-      {/* Profile Card */}
+      {/* Avatar + name */}
       <View style={styles.profileCard}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>T</Text>
+          <Text style={styles.avatarText}>{initial}</Text>
         </View>
-        <Text style={styles.profileName}>{profile.name}</Text>
-        <Text style={styles.profileSub}>TropiHair Member</Text>
+        <Text style={styles.name}>{profile?.name || "TropiHair User"}</Text>
+        <Text style={styles.email}>{profile?.email || ""}</Text>
+      </View>
 
-        {/* Language Toggle */}
-        <View style={styles.langRow}>
-          {["English", "Tamil", "Sinhala"].map((lang) => (
-            <TouchableOpacity
-              key={lang}
-              style={[
-                styles.langBtn,
-                language === lang && styles.langBtnActive,
-              ]}
-              onPress={() => setLanguage(lang)}
-            >
-              <Text
-                style={[
-                  styles.langText,
-                  language === lang && styles.langTextActive,
-                ]}
-              >
-                {lang}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      {/* Profile details */}
+      <View style={styles.detailsCard}>
+        <Text style={styles.sectionTitle}>👤 My Details</Text>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Gender</Text>
+          <Text style={styles.detailValue}>{profile?.gender || "—"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Age Group</Text>
+          <Text style={styles.detailValue}>{profile?.ageGroup || "—"}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Hair Type</Text>
+          <Text style={styles.detailValue}>{profile?.hairType || "—"}</Text>
+        </View>
+        <View style={[styles.detailRow, styles.detailRowLast]}>
+          <Text style={styles.detailLabel}>Main Concern</Text>
+          <Text style={styles.detailValue}>{profile?.mainConcern || "—"}</Text>
         </View>
       </View>
 
-      {/* Hair Profile */}
-      <Text style={styles.sectionTitle}>💇 Hair Profile</Text>
-      <View style={styles.infoCard}>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Hair Type</Text>
-          <Text style={styles.infoValue}>{profile.hairType}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Scalp Type</Text>
-          <Text style={styles.infoValue}>{profile.scalpType}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Water Type</Text>
-          <Text style={styles.infoValue}>{profile.waterType}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Lifestyle</Text>
-          <Text style={styles.infoValue}>{profile.lifestyle}</Text>
-        </View>
-      </View>
-
-      {/* Last Scan Summary */}
-      <Text style={styles.sectionTitle}>🔍 Last Scan</Text>
-      <View style={styles.lastScanCard}>
-        <Text style={styles.lastScanDate}>{profile.lastScan}</Text>
-        <Text style={styles.lastScanCondition}>{profile.condition}</Text>
-        <View style={styles.severityBadge}>
-          <Text style={styles.severityText}>{profile.severity}</Text>
-        </View>
-      </View>
-
-      {/* Scan History */}
-      <Text style={styles.sectionTitle}>📋 Scan History</Text>
+      {/* Scan history */}
       <View style={styles.historyCard}>
-        {scanHistory.map((item, index) => (
-          <View key={index} style={styles.historyRow}>
-            <View
-              style={[styles.historyDot, { backgroundColor: item.color }]}
-            />
-            <View style={styles.historyContent}>
-              <Text style={styles.historyCondition}>{item.condition}</Text>
-              <Text style={styles.historyDate}>{item.date}</Text>
+        <Text style={styles.sectionTitle}>
+          📸 Scan History ({scans.length})
+        </Text>
+        {scans.length === 0 ? (
+          <Text style={styles.emptyText}>
+            No scans yet. Scan your scalp to build your history.
+          </Text>
+        ) : (
+          scans.map((scan, i) => (
+            <View key={i} style={styles.scanRow}>
+              <View style={styles.scanLeft}>
+                <Text style={styles.scanCondition}>{scan.condition}</Text>
+                <Text style={styles.scanDate}>
+                  {formatDate(scan.timestamp)}
+                </Text>
+              </View>
+              <View style={styles.scanBadge}>
+                <Text style={styles.scanConfidence}>
+                  {Math.round(scan.confidence)}%
+                </Text>
+              </View>
             </View>
-            <View
-              style={[
-                styles.historyBadge,
-                { backgroundColor: item.color + "33" },
-              ]}
-            >
-              <Text style={[styles.historyBadgeText, { color: item.color }]}>
-                {item.severity}
-              </Text>
-            </View>
-          </View>
-        ))}
+          ))
+        )}
       </View>
 
-      {/* Doctor Consultation */}
-      <Text style={styles.sectionTitle}>👨‍⚕️ Doctor Consultation</Text>
-      <View style={styles.doctorCard}>
-        <Text style={styles.doctorText}>
-          Share your health history with a dermatologist
-        </Text>
-        <TouchableOpacity
-          style={styles.doctorBtn}
-          onPress={() => navigation.navigate("BeforeAfter")}
-        >
-          <Text style={styles.doctorBtnText}>📤 Share Health Report</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.findDoctorBtn}
-          onPress={() => navigation.navigate("DoctorConsultation")}
-        >
-          <Text style={styles.findDoctorBtnText}>🏥 Find Nearby Doctors</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Quick links */}
+      <TouchableOpacity
+        style={styles.linkBtn}
+        onPress={() => navigation.navigate("BeforeAfter")}
+      >
+        <Text style={styles.linkText}>📊 Before / After Progress</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.linkBtn}
+        onPress={() => navigation.navigate("DoctorConsultation")}
+      >
+        <Text style={styles.linkText}>⚕️ Find a Dermatologist</Text>
+      </TouchableOpacity>
+
+      {/* Logout */}
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+        <Text style={styles.logoutText}>🚪 Logout</Text>
+      </TouchableOpacity>
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
@@ -172,146 +202,101 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 20,
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  center: { justifyContent: "center", alignItems: "center" },
+  title: {
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "bold",
     marginBottom: 20,
   },
-  backBtn: { color: "#52B788", fontSize: 16 },
-  title: { color: "#FFFFFF", fontSize: 20, fontWeight: "bold" },
   profileCard: {
     backgroundColor: "#1B2A3B",
     borderRadius: 16,
-    padding: 20,
+    padding: 24,
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   avatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: "#52B788",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
   },
-  avatarText: { color: "#FFFFFF", fontSize: 28, fontWeight: "bold" },
-  profileName: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 4,
+  avatarText: { color: "#FFFFFF", fontSize: 34, fontWeight: "bold" },
+  name: { color: "#FFFFFF", fontSize: 20, fontWeight: "bold" },
+  email: { color: "#A8DADC", fontSize: 13, marginTop: 4 },
+  detailsCard: {
+    backgroundColor: "#1B2A3B",
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 16,
   },
-  profileSub: { color: "#A8DADC", fontSize: 13, marginBottom: 16 },
-  langRow: { flexDirection: "row", gap: 8 },
-  langBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#52B788",
-  },
-  langBtnActive: { backgroundColor: "#52B788" },
-  langText: { color: "#52B788", fontSize: 12 },
-  langTextActive: { color: "#FFFFFF", fontWeight: "bold" },
   sectionTitle: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 12,
+    marginBottom: 14,
   },
-  infoCard: {
-    backgroundColor: "#1B2A3B",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  infoRow: {
+  detailRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#0D1B2A",
   },
-  infoLabel: { color: "#A8DADC", fontSize: 14 },
-  infoValue: { color: "#FFFFFF", fontSize: 14, fontWeight: "bold" },
-  lastScanCard: {
-    backgroundColor: "#1B2A3B",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    alignItems: "center",
-  },
-  lastScanDate: { color: "#A8DADC", fontSize: 12, marginBottom: 8 },
-  lastScanCondition: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  severityBadge: {
-    backgroundColor: "#F4A261",
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  severityText: { color: "#FFFFFF", fontSize: 13, fontWeight: "bold" },
+  detailRowLast: { borderBottomWidth: 0 },
+  detailLabel: { color: "#A8DADC", fontSize: 14 },
+  detailValue: { color: "#FFFFFF", fontSize: 14, fontWeight: "600" },
   historyCard: {
     backgroundColor: "#1B2A3B",
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
+    padding: 18,
+    marginBottom: 16,
   },
-  historyRow: {
+  emptyText: {
+    color: "#A8DADC",
+    fontSize: 13,
+    textAlign: "center",
+    paddingVertical: 16,
+  },
+  scanRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#0D1B2A",
   },
-  historyDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 12,
-  },
-  historyContent: { flex: 1 },
-  historyCondition: { color: "#FFFFFF", fontSize: 14, fontWeight: "bold" },
-  historyDate: { color: "#A8DADC", fontSize: 11 },
-  historyBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  historyBadgeText: { fontSize: 11, fontWeight: "bold" },
-  doctorCard: {
-    backgroundColor: "#1B2A3B",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 30,
-  },
-  doctorText: {
-    color: "#A8DADC",
-    fontSize: 13,
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  doctorBtn: {
+  scanLeft: { flex: 1 },
+  scanCondition: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
+  scanDate: { color: "#A8DADC", fontSize: 12, marginTop: 3 },
+  scanBadge: {
     backgroundColor: "#52B788",
     borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
-  doctorBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "bold" },
-  findDoctorBtn: {
+  scanConfidence: { color: "#FFFFFF", fontSize: 13, fontWeight: "bold" },
+  linkBtn: {
     backgroundColor: "#1B2A3B",
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: "#52B788",
   },
-  findDoctorBtnText: { color: "#52B788", fontSize: 14, fontWeight: "bold" },
+  linkText: { color: "#52B788", fontSize: 15, fontWeight: "600" },
+  logoutBtn: {
+    backgroundColor: "#3A1B1B",
+    borderRadius: 14,
+    padding: 16,
+    alignItems: "center",
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#E63946",
+  },
+  logoutText: { color: "#E63946", fontSize: 15, fontWeight: "bold" },
 });

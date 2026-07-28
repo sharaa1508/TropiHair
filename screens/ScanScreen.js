@@ -7,11 +7,16 @@ import {
   Image,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
+// ⚠️ IMPORTANT: Replace with YOUR laptop's WiFi IPv4 address
+const API_URL = "http://192.168.8.107:8000";
+
 export default function ScanScreen({ navigation }) {
   const [selectedImage, setSelectedImage] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // Take photo with camera
   const takePhoto = async () => {
@@ -19,18 +24,16 @@ export default function ScanScreen({ navigation }) {
     if (!permission.granted) {
       Alert.alert(
         "Permission Needed",
-        "Camera access is required to scan your scalp. Please enable it in settings.",
+        "Camera access is required to scan your scalp.",
       );
       return;
     }
-
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
-
     if (!result.canceled) {
       setSelectedImage(result.assets[0].uri);
     }
@@ -40,36 +43,66 @@ export default function ScanScreen({ navigation }) {
   const pickFromGallery = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
-        "Permission Needed",
-        "Gallery access is required to select a photo.",
-      );
+      Alert.alert("Permission Needed", "Gallery access is required.");
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
-
     if (!result.canceled) {
       setSelectedImage(result.assets[0].uri);
     }
   };
 
-  // Analyze - image venum
-  const handleAnalyze = () => {
+  // Send image to API and analyze
+  const handleAnalyze = async () => {
     if (!selectedImage) {
-      Alert.alert(
-        "No Image",
-        "Please take a photo or choose one from your gallery first.",
-      );
+      Alert.alert("No Image", "Please take or choose a photo first.");
       return;
     }
-    // Image uri-ai Results screen ku anuppurom (later API call add pannuvom)
-    navigation.navigate("Results", { imageUri: selectedImage });
+
+    setLoading(true);
+    try {
+      // Build form data with the image file
+      const formData = new FormData();
+      formData.append("file", {
+        uri: selectedImage,
+        name: "scalp.jpg",
+        type: "image/jpeg",
+      });
+
+      const response = await fetch(`${API_URL}/predict`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Valid scalp condition - go to Results
+        navigation.navigate("Results", {
+          imageUri: selectedImage,
+          result: data,
+        });
+      } else {
+        // Poor quality / not scalp / low confidence
+        Alert.alert("Cannot Analyze", data.message);
+      }
+    } catch (error) {
+      console.log("Analyze error:", error);
+      Alert.alert(
+        "Connection Error",
+        "Could not reach the analysis server. Make sure the server is running and your phone is on the same WiFi.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -106,8 +139,8 @@ export default function ScanScreen({ navigation }) {
         )}
       </View>
 
-      {/* Retake option - image irundha mattum */}
-      {selectedImage && (
+      {/* Remove image */}
+      {selectedImage && !loading && (
         <TouchableOpacity
           style={styles.clearBtn}
           onPress={() => setSelectedImage(null)}
@@ -117,11 +150,19 @@ export default function ScanScreen({ navigation }) {
       )}
 
       {/* Upload Buttons */}
-      <TouchableOpacity style={styles.cameraBtn} onPress={takePhoto}>
+      <TouchableOpacity
+        style={styles.cameraBtn}
+        onPress={takePhoto}
+        disabled={loading}
+      >
         <Text style={styles.cameraBtnText}>📸 Take Photo</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.galleryBtn} onPress={pickFromGallery}>
+      <TouchableOpacity
+        style={styles.galleryBtn}
+        onPress={pickFromGallery}
+        disabled={loading}
+      >
         <Text style={styles.galleryBtnText}>🖼️ Choose from Gallery</Text>
       </TouchableOpacity>
 
@@ -129,8 +170,16 @@ export default function ScanScreen({ navigation }) {
       <TouchableOpacity
         style={[styles.analyzeBtn, !selectedImage && styles.analyzeBtnDisabled]}
         onPress={handleAnalyze}
+        disabled={loading}
       >
-        <Text style={styles.analyzeBtnText}>🔍 Analyze Now</Text>
+        {loading ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color="#FFFFFF" />
+            <Text style={styles.analyzeBtnText}> Analyzing...</Text>
+          </View>
+        ) : (
+          <Text style={styles.analyzeBtnText}>🔍 Analyze Now</Text>
+        )}
       </TouchableOpacity>
 
       <Text style={styles.disclaimer}>
@@ -216,6 +265,7 @@ const styles = StyleSheet.create({
   },
   analyzeBtnDisabled: { backgroundColor: "#1B2A3B" },
   analyzeBtnText: { color: "#FFFFFF", fontSize: 18, fontWeight: "bold" },
+  loadingRow: { flexDirection: "row", alignItems: "center" },
   disclaimer: {
     color: "#666",
     fontSize: 11,
