@@ -1,50 +1,63 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Image,
 } from "react-native";
+import { auth, db } from "../firebaseConfig";
+import { collection, addDoc } from "firebase/firestore";
 
-export default function RoutineScreen({ navigation }) {
-  const [checkedItems, setCheckedItems] = useState({});
+export default function ResultsScreen({ navigation, route }) {
+  const apiResult = route?.params?.result;
+  const imageUri = route?.params?.imageUri;
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
-  const toggleCheck = (id) => {
-    setCheckedItems((prev) => ({ ...prev, [id]: !prev[id] }));
+  const getSeverity = (confidence) => {
+    if (confidence >= 85) return { label: "High Confidence", color: "#52B788" };
+    if (confidence >= 70) return { label: "Moderate", color: "#F4A261" };
+    return { label: "Low Confidence", color: "#E63946" };
   };
 
-  const weekPlan = [
-    { day: "Mon", tasks: ["Oil", "Massage"] },
-    { day: "Tue", tasks: ["Comb"] },
-    { day: "Wed", tasks: ["Hair Pack", "Wash"] },
-    { day: "Thu", tasks: ["Oil", "Massage"] },
-    { day: "Fri", tasks: ["Comb"] },
-    { day: "Sat", tasks: ["Hair Pack", "Wash"] },
-    { day: "Sun", tasks: ["Rest"] },
-  ];
+  const result = apiResult
+    ? {
+        condition: apiResult.condition,
+        confidence: apiResult.confidence,
+        description: apiResult.description,
+        top3: apiResult.top3 || [],
+        heatmap: apiResult.heatmap || null,
+        ...getSeverity(apiResult.confidence),
+      }
+    : {
+        condition: "No Scan Yet",
+        confidence: 0,
+        description: "Please scan your scalp first to see results.",
+        top3: [],
+        heatmap: null,
+        label: "N/A",
+        color: "#A8DADC",
+      };
 
-  const todayTasks = [
-    { id: 1, time: "7:00 AM", task: "Morning hair comb (5 min)", icon: "🪮" },
-    { id: 2, time: "8:00 PM", task: "Apply Coconut Oil", icon: "🫙" },
-    {
-      id: 3,
-      time: "8:10 PM",
-      task: "Scalp massage in circular motion (10 min)",
-      icon: "💆",
-    },
-    { id: 4, time: "8:45 PM", task: "Wash off with mild shampoo", icon: "🚿" },
-    { id: 5, time: "9:00 PM", task: "Dry hair gently with towel", icon: "🧴" },
-  ];
-
-  const massageTips = [
-    "• Use fingertips, not nails",
-    "• Circular motion — 10 minutes",
-    "• Part hair in sections for full coverage",
-    "• Best time: evening before wash",
-  ];
-
-  const completedCount = Object.values(checkedItems).filter(Boolean).length;
+  // Save scan to Firestore history
+  useEffect(() => {
+    const saveScan = async () => {
+      const user = auth.currentUser;
+      if (!user || !apiResult) return;
+      try {
+        await addDoc(collection(db, "users", user.uid, "scans"), {
+          condition: apiResult.condition,
+          confidence: apiResult.confidence,
+          description: apiResult.description || "",
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.log("Scan save error:", error);
+      }
+    };
+    saveScan();
+  }, []);
 
   return (
     <ScrollView style={styles.container}>
@@ -53,110 +66,141 @@ export default function RoutineScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backBtn}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>My Routine</Text>
+        <Text style={styles.title}>Analysis Results</Text>
         <View />
       </View>
 
-      {/* Progress */}
-      <View style={styles.progressCard}>
-        <Text style={styles.progressTitle}>Today's Progress</Text>
-        <Text style={styles.progressCount}>
-          {completedCount} / {todayTasks.length} tasks done
+      {/* Image (original OR heatmap) */}
+      {imageUri && (
+        <View style={styles.imageBox}>
+          {showHeatmap && result.heatmap ? (
+            <Image
+              source={{ uri: `data:image/png;base64,${result.heatmap}` }}
+              style={styles.scanImage}
+            />
+          ) : (
+            <Image source={{ uri: imageUri }} style={styles.scanImage} />
+          )}
+        </View>
+      )}
+
+      {/* Heatmap toggle (only if heatmap exists) */}
+      {result.heatmap && (
+        <View style={styles.toggleRow}>
+          <TouchableOpacity
+            style={[styles.toggleBtn, !showHeatmap && styles.toggleActive]}
+            onPress={() => setShowHeatmap(false)}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                !showHeatmap && styles.toggleTextActive,
+              ]}
+            >
+              📷 Original
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, showHeatmap && styles.toggleActive]}
+            onPress={() => setShowHeatmap(true)}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                showHeatmap && styles.toggleTextActive,
+              ]}
+            >
+              🔬 AI View
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* AI View explanation */}
+      {showHeatmap && result.heatmap && (
+        <View style={styles.heatmapInfo}>
+          <Text style={styles.heatmapInfoText}>
+            🔬 The highlighted areas show where the AI focused to make this
+            prediction. Red/yellow zones influenced the result most.
+          </Text>
+        </View>
+      )}
+
+      {/* Result Card */}
+      <View style={styles.resultCard}>
+        <Text style={styles.conditionLabel}>Detected Condition</Text>
+        <Text style={styles.conditionName}>{result.condition}</Text>
+
+        <View style={[styles.severityBadge, { backgroundColor: result.color }]}>
+          <Text style={styles.severityText}>{result.label}</Text>
+        </View>
+
+        <Text style={styles.confidence}>
+          AI Confidence: {result.confidence}%
         </Text>
         <View style={styles.progressBar}>
           <View
-            style={[
-              styles.progressFill,
-              { width: `${(completedCount / todayTasks.length) * 100}%` },
-            ]}
+            style={[styles.progressFill, { width: `${result.confidence}%` }]}
           />
         </View>
       </View>
 
-      {/* Weekly Plan */}
-      <Text style={styles.sectionTitle}>📅 Weekly Plan</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.weekScroll}
-      >
-        {weekPlan.map((item, index) => (
-          <View key={index} style={styles.dayCard}>
-            <Text style={styles.dayText}>{item.day}</Text>
-            {item.tasks.map((task, i) => (
-              <Text key={i} style={styles.dayTask}>
-                {task}
-              </Text>
-            ))}
-          </View>
-        ))}
-      </ScrollView>
-
-      {/* Today's Tasks Checklist */}
-      <Text style={styles.sectionTitle}>✅ Today's Checklist</Text>
-      <View style={styles.checklistCard}>
-        {todayTasks.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={styles.checkRow}
-            onPress={() => toggleCheck(item.id)}
-          >
-            <View
-              style={[
-                styles.checkbox,
-                checkedItems[item.id] && styles.checkboxDone,
-              ]}
-            >
-              {checkedItems[item.id] && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <View style={styles.checkContent}>
-              <Text style={styles.checkTime}>{item.time}</Text>
-              <Text
-                style={[
-                  styles.checkTask,
-                  checkedItems[item.id] && styles.checkTaskDone,
-                ]}
-              >
-                {item.icon} {item.task}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+      {/* Description */}
+      <View style={styles.descCard}>
+        <Text style={styles.descTitle}>📋 About this condition</Text>
+        <Text style={styles.descText}>{result.description}</Text>
       </View>
 
-      {/* Scalp Massage Guide */}
-      <Text style={styles.sectionTitle}>💆 Scalp Massage Guide</Text>
-      <View style={styles.massageCard}>
-        {massageTips.map((tip, index) => (
-          <Text key={index} style={styles.massageTip}>
-            {tip}
+      {/* Other Possibilities */}
+      {result.top3.length > 1 && (
+        <View style={styles.top3Card}>
+          <Text style={styles.top3Title}>🔍 Other Possibilities</Text>
+          {result.top3.map((item, index) => (
+            <View key={index} style={styles.top3Row}>
+              <Text style={styles.top3Condition}>{item.condition}</Text>
+              <Text style={styles.top3Confidence}>{item.confidence}%</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Confidence Guide */}
+      <View style={styles.severityCard}>
+        <Text style={styles.severityTitle}>📊 Confidence Guide</Text>
+        <View style={styles.severityRow}>
+          <View style={[styles.severityDot, { backgroundColor: "#52B788" }]} />
+          <Text style={styles.severityLabel}>High (85%+) — Strong match</Text>
+        </View>
+        <View style={styles.severityRow}>
+          <View style={[styles.severityDot, { backgroundColor: "#F4A261" }]} />
+          <Text style={styles.severityLabel}>
+            Moderate (70-85%) — Likely match
           </Text>
-        ))}
+        </View>
+        <View style={styles.severityRow}>
+          <View style={[styles.severityDot, { backgroundColor: "#E63946" }]} />
+          <Text style={styles.severityLabel}>Low — Consider rescanning</Text>
+        </View>
       </View>
 
-      {/* Hair Wash Day */}
-      <Text style={styles.sectionTitle}>🚿 Hair Wash Day Tips</Text>
-      <View style={styles.washCard}>
-        <Text style={styles.washStep}>1. Apply oil 45 min before wash</Text>
-        <Text style={styles.washStep}>2. Use lukewarm water (not hot)</Text>
-        <Text style={styles.washStep}>3. Use mild, sulfate-free shampoo</Text>
-        <Text style={styles.washStep}>4. Condition mid-lengths to ends</Text>
-        <Text style={styles.washStep}>
-          5. Cool rinse to close hair cuticles
-        </Text>
-        <Text style={styles.washStep}>6. Pat dry — do not rub</Text>
-      </View>
+      {/* Action Buttons */}
+      <TouchableOpacity
+        style={styles.primaryBtn}
+        onPress={() =>
+          navigation.navigate("Recommendations", {
+            condition: result.condition,
+          })
+        }
+      >
+        <Text style={styles.primaryBtnText}>💊 View Recommendations</Text>
+      </TouchableOpacity>
 
-      {/* Report Button */}
-      <View style={styles.reportCard}>
-        <Text style={styles.reportTitle}>📊 Weekly Report</Text>
-        <Text style={styles.reportText}>
-          This week: {completedCount} tasks completed
-        </Text>
-        <Text style={styles.reportSub}>
-          Keep up your routine for best results!
-        </Text>
-      </View>
+      <TouchableOpacity
+        style={styles.secondaryBtn}
+        onPress={() => navigation.navigate("Main", { screen: "Home" })}
+      >
+        <Text style={styles.secondaryBtnText}>🏠 Back to Home</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -172,122 +216,138 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 24,
   },
   backBtn: { color: "#52B788", fontSize: 16 },
   title: { color: "#FFFFFF", fontSize: 20, fontWeight: "bold" },
-  progressCard: {
+  imageBox: {
+    borderRadius: 16,
+    height: 180,
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+  scanImage: { width: "100%", height: "100%" },
+  toggleRow: {
+    flexDirection: "row",
+    backgroundColor: "#1B2A3B",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 12,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  toggleActive: { backgroundColor: "#52B788" },
+  toggleText: { color: "#A8DADC", fontSize: 13, fontWeight: "600" },
+  toggleTextActive: { color: "#FFFFFF" },
+  heatmapInfo: {
+    backgroundColor: "#152030",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#52B788",
+  },
+  heatmapInfoText: { color: "#A8DADC", fontSize: 12, lineHeight: 18 },
+  resultCard: {
     backgroundColor: "#1B2A3B",
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
+    padding: 20,
+    alignItems: "center",
+    marginBottom: 16,
   },
-  progressTitle: { color: "#A8DADC", fontSize: 13, marginBottom: 6 },
-  progressCount: {
+  conditionLabel: { color: "#A8DADC", fontSize: 13, marginBottom: 8 },
+  conditionName: {
     color: "#FFFFFF",
-    fontSize: 18,
+    fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 10,
+    marginBottom: 12,
+    textAlign: "center",
   },
+  severityBadge: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 16,
+  },
+  severityText: { color: "#FFFFFF", fontSize: 14, fontWeight: "bold" },
+  confidence: { color: "#A8DADC", fontSize: 13, marginBottom: 8 },
   progressBar: {
+    width: "100%",
     height: 8,
     backgroundColor: "#0D1B2A",
     borderRadius: 4,
     overflow: "hidden",
   },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#52B788",
-    borderRadius: 4,
+  progressFill: { height: "100%", backgroundColor: "#52B788", borderRadius: 4 },
+  descCard: {
+    backgroundColor: "#1B2A3B",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
   },
-  sectionTitle: {
+  descTitle: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  descText: { color: "#A8DADC", fontSize: 13, lineHeight: 20 },
+  top3Card: {
+    backgroundColor: "#1B2A3B",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  top3Title: {
+    color: "#FFFFFF",
+    fontSize: 15,
     fontWeight: "bold",
     marginBottom: 12,
   },
-  weekScroll: { marginBottom: 20 },
-  dayCard: {
-    backgroundColor: "#1B2A3B",
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 10,
-    minWidth: 70,
-    alignItems: "center",
-  },
-  dayText: {
-    color: "#52B788",
-    fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 6,
-  },
-  dayTask: {
-    color: "#A8DADC",
-    fontSize: 10,
-    textAlign: "center",
-    marginBottom: 2,
-  },
-  checklistCard: {
-    backgroundColor: "#1B2A3B",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  checkRow: {
+  top3Row: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
+    justifyContent: "space-between",
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#0D1B2A",
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "#52B788",
-    marginRight: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxDone: { backgroundColor: "#52B788" },
-  checkmark: { color: "#FFFFFF", fontSize: 14, fontWeight: "bold" },
-  checkContent: { flex: 1 },
-  checkTime: { color: "#52B788", fontSize: 11, marginBottom: 2 },
-  checkTask: { color: "#FFFFFF", fontSize: 13 },
-  checkTaskDone: { color: "#666", textDecorationLine: "line-through" },
-  massageCard: {
+  top3Condition: { color: "#A8DADC", fontSize: 14 },
+  top3Confidence: { color: "#52B788", fontSize: 14, fontWeight: "bold" },
+  severityCard: {
     backgroundColor: "#1B2A3B",
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
   },
-  massageTip: {
-    color: "#A8DADC",
-    fontSize: 13,
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  washCard: {
-    backgroundColor: "#1B2A3B",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  washStep: { color: "#A8DADC", fontSize: 13, marginBottom: 8 },
-  reportCard: {
-    backgroundColor: "#1B2A3B",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 30,
-    alignItems: "center",
-  },
-  reportTitle: {
+  severityTitle: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "bold",
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  reportText: { color: "#52B788", fontSize: 14, marginBottom: 4 },
-  reportSub: { color: "#A8DADC", fontSize: 12 },
+  severityRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+  severityDot: { width: 12, height: 12, borderRadius: 6, marginRight: 10 },
+  severityLabel: { color: "#A8DADC", fontSize: 13 },
+  primaryBtn: {
+    backgroundColor: "#52B788",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  primaryBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "bold" },
+  secondaryBtn: {
+    backgroundColor: "#1B2A3B",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    marginBottom: 30,
+    borderWidth: 1,
+    borderColor: "#52B788",
+  },
+  secondaryBtnText: { color: "#52B788", fontSize: 16, fontWeight: "bold" },
 });

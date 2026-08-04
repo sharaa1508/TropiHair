@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { collection, addDoc } from "firebase/firestore";
 export default function ResultsScreen({ navigation, route }) {
   const apiResult = route?.params?.result;
   const imageUri = route?.params?.imageUri;
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   const getSeverity = (confidence) => {
     if (confidence >= 85) return { label: "High Confidence", color: "#52B788" };
@@ -26,6 +27,7 @@ export default function ResultsScreen({ navigation, route }) {
         confidence: apiResult.confidence,
         description: apiResult.description,
         top3: apiResult.top3 || [],
+        heatmap: apiResult.heatmap || null,
         ...getSeverity(apiResult.confidence),
       }
     : {
@@ -33,11 +35,12 @@ export default function ResultsScreen({ navigation, route }) {
         confidence: 0,
         description: "Please scan your scalp first to see results.",
         top3: [],
+        heatmap: null,
         label: "N/A",
         color: "#A8DADC",
       };
 
-  // Save this scan to Firestore history (once, when a real result arrives)
+  // Save scan to Firestore history
   useEffect(() => {
     const saveScan = async () => {
       const user = auth.currentUser;
@@ -51,7 +54,6 @@ export default function ResultsScreen({ navigation, route }) {
         });
       } catch (error) {
         console.log("Scan save error:", error);
-        // Don't block the UI if saving fails
       }
     };
     saveScan();
@@ -68,10 +70,59 @@ export default function ResultsScreen({ navigation, route }) {
         <View />
       </View>
 
-      {/* Scanned Image */}
+      {/* Image (original OR heatmap) */}
       {imageUri && (
         <View style={styles.imageBox}>
-          <Image source={{ uri: imageUri }} style={styles.scanImage} />
+          {showHeatmap && result.heatmap ? (
+            <Image
+              source={{ uri: `data:image/png;base64,${result.heatmap}` }}
+              style={styles.scanImage}
+            />
+          ) : (
+            <Image source={{ uri: imageUri }} style={styles.scanImage} />
+          )}
+        </View>
+      )}
+
+      {/* Heatmap toggle (only if heatmap exists) */}
+      {result.heatmap && (
+        <View style={styles.toggleRow}>
+          <TouchableOpacity
+            style={[styles.toggleBtn, !showHeatmap && styles.toggleActive]}
+            onPress={() => setShowHeatmap(false)}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                !showHeatmap && styles.toggleTextActive,
+              ]}
+            >
+              📷 Original
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, showHeatmap && styles.toggleActive]}
+            onPress={() => setShowHeatmap(true)}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                showHeatmap && styles.toggleTextActive,
+              ]}
+            >
+              🔬 AI View
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* AI View explanation */}
+      {showHeatmap && result.heatmap && (
+        <View style={styles.heatmapInfo}>
+          <Text style={styles.heatmapInfoText}>
+            🔬 The highlighted areas show where the AI focused to make this
+            prediction. Red/yellow zones influenced the result most.
+          </Text>
         </View>
       )}
 
@@ -173,9 +224,34 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     height: 180,
     overflow: "hidden",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   scanImage: { width: "100%", height: "100%" },
+  toggleRow: {
+    flexDirection: "row",
+    backgroundColor: "#1B2A3B",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 12,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  toggleActive: { backgroundColor: "#52B788" },
+  toggleText: { color: "#A8DADC", fontSize: 13, fontWeight: "600" },
+  toggleTextActive: { color: "#FFFFFF" },
+  heatmapInfo: {
+    backgroundColor: "#152030",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#52B788",
+  },
+  heatmapInfoText: { color: "#A8DADC", fontSize: 12, lineHeight: 18 },
   resultCard: {
     backgroundColor: "#1B2A3B",
     borderRadius: 16,
@@ -206,11 +282,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: "hidden",
   },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#52B788",
-    borderRadius: 4,
-  },
+  progressFill: { height: "100%", backgroundColor: "#52B788", borderRadius: 4 },
   descCard: {
     backgroundColor: "#1B2A3B",
     borderRadius: 16,
@@ -257,17 +329,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 12,
   },
-  severityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  severityDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 10,
-  },
+  severityRow: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
+  severityDot: { width: 12, height: 12, borderRadius: 6, marginRight: 10 },
   severityLabel: { color: "#A8DADC", fontSize: 13 },
   primaryBtn: {
     backgroundColor: "#52B788",
