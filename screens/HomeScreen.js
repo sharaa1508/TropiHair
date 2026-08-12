@@ -20,18 +20,11 @@ export default function HomeScreen({ navigation }) {
         onPress: async () => {
           try {
             await signOut(auth);
-            // Tab navigator -> parent stack navigator
             const parent = navigation.getParent();
             if (parent) {
-              parent.reset({
-                index: 0,
-                routes: [{ name: "Login" }],
-              });
+              parent.reset({ index: 0, routes: [{ name: "Login" }] });
             } else {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "Login" }],
-              });
+              navigation.reset({ index: 0, routes: [{ name: "Login" }] });
             }
           } catch (error) {
             console.log("Logout error:", error);
@@ -89,6 +82,14 @@ export default function HomeScreen({ navigation }) {
         <Text style={styles.scanText}>📸 Scan My Scalp</Text>
       </TouchableOpacity>
 
+      {/* Shop Products Button */}
+      <TouchableOpacity
+        style={styles.shopButton}
+        onPress={() => navigation.navigate("Products")}
+      >
+        <Text style={styles.shopText}>🛒 Shop Hair Care Products</Text>
+      </TouchableOpacity>
+
       {/* Quick Links */}
       <View style={styles.quickLinks}>
         <TouchableOpacity
@@ -132,11 +133,7 @@ const styles = StyleSheet.create({
   },
   logo: { fontSize: 28, fontWeight: "bold", color: "#52B788" },
   headerIcons: { flexDirection: "row", gap: 8 },
-  iconBtn: {
-    backgroundColor: "#1B2A3B",
-    borderRadius: 12,
-    padding: 8,
-  },
+  iconBtn: { backgroundColor: "#1B2A3B", borderRadius: 12, padding: 8 },
   bellIcon: { fontSize: 20 },
   tagline: { fontSize: 14, color: "#A8DADC", marginTop: 4 },
   card: {
@@ -168,9 +165,17 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   scanText: { color: "#FFFFFF", fontSize: 18, fontWeight: "bold" },
+  shopButton: {
+    backgroundColor: "#F4A261",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  shopText: { color: "#FFFFFF", fontSize: 16, fontWeight: "bold" },
   quickLinks: {
     flexDirection: "row",
     justifyContent: "space-between",

@@ -1,5 +1,9 @@
 import "react-native-gesture-handler";
-import { NavigationContainer } from "@react-navigation/native";
+import { useState } from "react";
+import {
+  NavigationContainer,
+  createNavigationContainerRef,
+} from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Text } from "react-native";
@@ -18,9 +22,18 @@ import WeatherScreen from "./screens/WeatherScreen";
 import DoctorConsultationScreen from "./screens/DoctorConsultationScreen";
 import BeforeAfterScreen from "./screens/BeforeAfterScreen";
 import NotificationsScreen from "./screens/NotificationsScreen";
+import ProductsScreen from "./screens/ProductsScreen";
+import FlareForecastScreen from "./screens/FlareForecastScreen";
+import ChatBot from "./ChatBot";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+
+// Ref to read the current active route name from outside the navigator
+const navigationRef = createNavigationContainerRef();
+
+// Screens where the floating chatbot should NOT appear
+const HIDDEN_SCREENS = ["Login", "Onboarding"];
 
 function MainTabs() {
   return (
@@ -57,8 +70,23 @@ function MainTabs() {
 }
 
 export default function App() {
+  // Track the current screen name (initial route is "Login")
+  const [routeName, setRouteName] = useState("Login");
+
+  // Update route name whenever navigation changes
+  const handleRouteChange = () => {
+    if (navigationRef.isReady()) {
+      const current = navigationRef.getCurrentRoute()?.name;
+      if (current) setRouteName(current);
+    }
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={handleRouteChange}
+      onStateChange={handleRouteChange}
+    >
       <Stack.Navigator
         initialRouteName="Login"
         screenOptions={{ headerShown: false }}
@@ -80,6 +108,8 @@ export default function App() {
         />
         <Stack.Screen name="Weather" component={WeatherScreen} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
+        <Stack.Screen name="Products" component={ProductsScreen} />
+        <Stack.Screen name="FlareForecast" component={FlareForecastScreen} />
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="Results" component={ResultsScreen} />
         <Stack.Screen
@@ -87,6 +117,9 @@ export default function App() {
           component={RecommendationsScreen}
         />
       </Stack.Navigator>
+
+      {/* Floating chatbot - hidden on Login / Onboarding screens */}
+      {!HIDDEN_SCREENS.includes(routeName) && <ChatBot />}
     </NavigationContainer>
   );
 }

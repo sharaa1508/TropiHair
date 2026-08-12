@@ -1,63 +1,84 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
+  ActivityIndicator,
 } from "react-native";
+import { auth, db } from "../firebaseConfig";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
 export default function BeforeAfterScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("compare");
+  const [scans, setScans] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const comparisons = [
-    {
-      id: 1,
-      date: "Jun 1, 2026",
-      condition: "Folliculitis",
-      severity: "Severe",
-      severityColor: "#E63946",
-      note: "Started treatment with Neem Oil",
-    },
-    {
-      id: 2,
-      date: "Jun 15, 2026",
-      condition: "Folliculitis",
-      severity: "Moderate",
-      severityColor: "#F4A261",
-      note: "Improvement noticed after 2 weeks",
-    },
-    {
-      id: 3,
-      date: "Jul 5, 2026",
-      condition: "Folliculitis",
-      severity: "Mild",
-      severityColor: "#52B788",
-      note: "Significant improvement!",
-    },
-  ];
+  useEffect(() => {
+    loadScans();
+  }, []);
 
-  const progressStats = [
-    { label: "Days on Treatment", value: "34", icon: "📅" },
-    { label: "Scans Completed", value: "3", icon: "📸" },
-    { label: "Improvement", value: "65%", icon: "📈" },
-    { label: "Streak", value: "12 days", icon: "🔥" },
-  ];
+  const loadScans = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const q = query(
+        collection(db, "users", user.uid, "scans"),
+        orderBy("timestamp", "desc"),
+      );
+      const snap = await getDocs(q);
+      setScans(snap.docs.map((d) => d.data()));
+    } catch (error) {
+      console.log("Load scans error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (iso) => {
+    try {
+      return new Date(iso).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return "";
+    }
+  };
+
+  // Newest and oldest scans for before/after comparison
+  const latest = scans[0];
+  const oldest = scans[scans.length - 1];
+  const daysBetween =
+    latest && oldest && scans.length > 1
+      ? Math.round(
+          (new Date(latest.timestamp) - new Date(oldest.timestamp)) /
+            (1000 * 60 * 60 * 24),
+        )
+      : 0;
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
+      {/* Header with Back + Home */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtn}>← Back</Text>
+          <Text style={styles.headerBtn}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Progress Tracker</Text>
-        <View />
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Main", { screen: "Home" })}
+        >
+          <Text style={styles.headerBtn}>🏠</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabs}>
+      <View style={styles.tabRow}>
         <TouchableOpacity
           style={[styles.tab, activeTab === "compare" && styles.tabActive]}
           onPress={() => setActiveTab("compare")}
@@ -86,155 +107,118 @@ export default function BeforeAfterScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {activeTab === "compare" ? (
-        <View>
-          {/* Progress Stats */}
-          <View style={styles.statsGrid}>
-            {progressStats.map((stat, index) => (
-              <View key={index} style={styles.statCard}>
-                <Text style={styles.statIcon}>{stat.icon}</Text>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Before/After Comparison */}
-          <Text style={styles.sectionTitle}>📸 Photo Comparison</Text>
-          <View style={styles.compareCard}>
-            {/* Before */}
-            <View style={styles.compareBox}>
-              <Text style={styles.compareLabel}>BEFORE</Text>
-              <View style={styles.photoPlaceholder}>
-                <Text style={styles.photoIcon}>📷</Text>
-                <Text style={styles.photoDate}>Jun 1, 2026</Text>
-                <View
-                  style={[styles.severityTag, { backgroundColor: "#E6394620" }]}
-                >
-                  <Text style={[styles.severityTagText, { color: "#E63946" }]}>
-                    Severe
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Arrow */}
-            <View style={styles.arrowBox}>
-              <Text style={styles.arrow}>→</Text>
-              <Text style={styles.arrowLabel}>34 days</Text>
-            </View>
-
-            {/* After */}
-            <View style={styles.compareBox}>
-              <Text style={styles.compareLabel}>AFTER</Text>
-              <View style={[styles.photoPlaceholder, styles.photoAfter]}>
-                <Text style={styles.photoIcon}>📷</Text>
-                <Text style={styles.photoDate}>Jul 5, 2026</Text>
-                <View
-                  style={[styles.severityTag, { backgroundColor: "#52B78820" }]}
-                >
-                  <Text style={[styles.severityTagText, { color: "#52B788" }]}>
-                    Mild
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Improvement Bar */}
-          <View style={styles.improvementCard}>
-            <Text style={styles.improvementTitle}>📈 Overall Improvement</Text>
-            <View style={styles.improvementBar}>
-              <View style={styles.improvementFill} />
-            </View>
-            <View style={styles.improvementLabels}>
-              <Text style={styles.improvementStart}>Severe</Text>
-              <Text style={styles.improvementPercent}>65% Better</Text>
-              <Text style={styles.improvementEnd}>Mild</Text>
-            </View>
-          </View>
-
-          {/* Add New Photo */}
+      {loading ? (
+        <ActivityIndicator
+          size="large"
+          color="#52B788"
+          style={{ marginTop: 40 }}
+        />
+      ) : scans.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyIcon}>📸</Text>
+          <Text style={styles.emptyText}>
+            No scans yet. Scan your scalp to start tracking your progress over
+            time.
+          </Text>
           <TouchableOpacity
-            style={styles.addPhotoBtn}
+            style={styles.scanBtn}
             onPress={() => navigation.navigate("Main", { screen: "Scan" })}
           >
-            <Text style={styles.addPhotoBtnText}>📸 Add New Scan Photo</Text>
+            <Text style={styles.scanBtnText}>📸 Do a Scan</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        // Timeline Tab
-        <View>
-          <Text style={styles.sectionTitle}>📅 Treatment Timeline</Text>
-          {comparisons.map((item, index) => (
-            <View key={item.id} style={styles.timelineItem}>
-              {/* Timeline Line */}
-              <View style={styles.timelineLeft}>
-                <View
-                  style={[
-                    styles.timelineDot,
-                    { backgroundColor: item.severityColor },
-                  ]}
-                />
-                {index < comparisons.length - 1 && (
-                  <View style={styles.timelineLine} />
-                )}
+        <>
+          {/* Stats */}
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{scans.length}</Text>
+              <Text style={styles.statLabel}>Total Scans</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{daysBetween}</Text>
+              <Text style={styles.statLabel}>Days Tracked</Text>
+            </View>
+          </View>
+
+          {/* ---- COMPARE TAB ---- */}
+          {activeTab === "compare" &&
+            (scans.length < 2 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>
+                  Do at least 2 scans to see a before/after comparison.
+                </Text>
               </View>
-
-              {/* Content */}
-              <View style={styles.timelineContent}>
-                <Text style={styles.timelineDate}>{item.date}</Text>
-                <View style={styles.timelineCard}>
-                  <View style={styles.timelineHeader}>
-                    <Text style={styles.timelineCondition}>
-                      {item.condition}
+            ) : (
+              <View style={styles.compareCard}>
+                <Text style={styles.sectionTitle}>📸 Before vs After</Text>
+                <View style={styles.compareRow}>
+                  <View style={styles.compareItem}>
+                    <Text style={styles.compareLabel}>BEFORE</Text>
+                    <Text style={styles.compareCondition}>
+                      {oldest.condition}
                     </Text>
-                    <View
-                      style={[
-                        styles.severityBadge,
-                        { backgroundColor: item.severityColor + "20" },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.severityBadgeText,
-                          { color: item.severityColor },
-                        ]}
-                      >
-                        {item.severity}
-                      </Text>
-                    </View>
+                    <Text style={styles.compareDate}>
+                      {formatDate(oldest.timestamp)}
+                    </Text>
+                    <Text style={styles.compareConf}>
+                      {Math.round(oldest.confidence)}%
+                    </Text>
                   </View>
-                  <Text style={styles.timelineNote}>{item.note}</Text>
-
-                  {/* Photo placeholder */}
-                  <View style={styles.timelinePhoto}>
-                    <Text style={styles.timelinePhotoIcon}>📷</Text>
-                    <Text style={styles.timelinePhotoText}>
-                      Tap to view photo
+                  <Text style={styles.arrow}>→</Text>
+                  <View style={styles.compareItem}>
+                    <Text style={styles.compareLabel}>AFTER</Text>
+                    <Text style={styles.compareCondition}>
+                      {latest.condition}
+                    </Text>
+                    <Text style={styles.compareDate}>
+                      {formatDate(latest.timestamp)}
+                    </Text>
+                    <Text style={styles.compareConf}>
+                      {Math.round(latest.confidence)}%
                     </Text>
                   </View>
                 </View>
+                <Text style={styles.compareNote}>
+                  {oldest.condition === latest.condition
+                    ? `Still showing ${latest.condition} across ${daysBetween} days.`
+                    : `Changed from ${oldest.condition} to ${latest.condition}.`}
+                </Text>
               </View>
-            </View>
-          ))}
+            ))}
 
-          {/* Progress Summary */}
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>🎯 Treatment Summary</Text>
-            <Text style={styles.summaryText}>
-              In 34 days, your Folliculitis improved from Severe to Mild.
-              Continue your routine for full recovery!
-            </Text>
-            <TouchableOpacity
-              style={styles.routineBtn}
-              onPress={() => navigation.navigate("Routine")}
-            >
-              <Text style={styles.routineBtnText}>📅 View My Routine</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+          {/* ---- TIMELINE TAB ---- */}
+          {activeTab === "timeline" && (
+            <View style={styles.timelineCard}>
+              <Text style={styles.sectionTitle}>📅 Scan Timeline</Text>
+              {scans.map((scan, i) => (
+                <View key={i} style={styles.timelineRow}>
+                  <View style={styles.timelineDot} />
+                  <View style={styles.timelineContent}>
+                    <Text style={styles.timelineCondition}>
+                      {scan.condition}
+                    </Text>
+                    <Text style={styles.timelineDate}>
+                      {formatDate(scan.timestamp)} ·{" "}
+                      {Math.round(scan.confidence)}% confidence
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Add new scan */}
+          <TouchableOpacity
+            style={styles.scanBtn}
+            onPress={() => navigation.navigate("Main", { screen: "Scan" })}
+          >
+            <Text style={styles.scanBtnText}>📸 Add New Scan</Text>
+          </TouchableOpacity>
+        </>
       )}
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
@@ -252,189 +236,114 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  backBtn: { color: "#52B788", fontSize: 16 },
+  headerBtn: { color: "#52B788", fontSize: 16 },
   title: { color: "#FFFFFF", fontSize: 20, fontWeight: "bold" },
-  tabs: {
+  tabRow: {
     flexDirection: "row",
     backgroundColor: "#1B2A3B",
     borderRadius: 12,
     padding: 4,
     marginBottom: 20,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: "center",
-    borderRadius: 10,
-  },
+  tab: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: "center" },
   tabActive: { backgroundColor: "#52B788" },
-  tabText: { color: "#A8DADC", fontSize: 13 },
-  tabTextActive: { color: "#FFFFFF", fontWeight: "bold" },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 20,
-  },
+  tabText: { color: "#A8DADC", fontSize: 13, fontWeight: "600" },
+  tabTextActive: { color: "#FFFFFF" },
+  statsRow: { flexDirection: "row", marginBottom: 16 },
   statCard: {
+    flex: 1,
     backgroundColor: "#1B2A3B",
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 16,
+    padding: 18,
     alignItems: "center",
-    width: "47%",
+    marginHorizontal: 4,
   },
-  statIcon: { fontSize: 24, marginBottom: 6 },
-  statValue: { color: "#52B788", fontSize: 22, fontWeight: "bold" },
-  statLabel: {
-    color: "#A8DADC",
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: 4,
-  },
+  statValue: { color: "#52B788", fontSize: 32, fontWeight: "bold" },
+  statLabel: { color: "#A8DADC", fontSize: 12, marginTop: 4 },
   sectionTitle: {
     color: "#FFFFFF",
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   compareCard: {
     backgroundColor: "#1B2A3B",
     borderRadius: 16,
-    padding: 16,
+    padding: 18,
+    marginBottom: 16,
+  },
+  compareRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    justifyContent: "space-between",
   },
-  compareBox: { flex: 1, alignItems: "center" },
-  compareLabel: {
-    color: "#A8DADC",
-    fontSize: 11,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  photoPlaceholder: {
+  compareItem: {
+    flex: 1,
+    alignItems: "center",
     backgroundColor: "#0D1B2A",
     borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#E6394640",
+    padding: 14,
   },
-  photoAfter: { borderColor: "#52B78840" },
-  photoIcon: { fontSize: 32, marginBottom: 6 },
-  photoDate: { color: "#A8DADC", fontSize: 10, marginBottom: 6 },
-  severityTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  severityTagText: { fontSize: 10, fontWeight: "bold" },
-  arrowBox: { alignItems: "center", paddingHorizontal: 8 },
-  arrow: { color: "#52B788", fontSize: 24, fontWeight: "bold" },
-  arrowLabel: { color: "#A8DADC", fontSize: 9, marginTop: 4 },
-  improvementCard: {
-    backgroundColor: "#1B2A3B",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-  },
-  improvementTitle: {
+  compareLabel: { color: "#A8DADC", fontSize: 11, marginBottom: 6 },
+  compareCondition: {
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "bold",
-    marginBottom: 12,
+    textAlign: "center",
   },
-  improvementBar: {
-    height: 12,
-    backgroundColor: "#0D1B2A",
-    borderRadius: 6,
-    overflow: "hidden",
-    marginBottom: 8,
-  },
-  improvementFill: {
-    height: "100%",
-    width: "65%",
-    backgroundColor: "#52B788",
-    borderRadius: 6,
-  },
-  improvementLabels: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  improvementStart: { color: "#E63946", fontSize: 11 },
-  improvementPercent: { color: "#52B788", fontSize: 11, fontWeight: "bold" },
-  improvementEnd: { color: "#52B788", fontSize: 11 },
-  addPhotoBtn: {
-    backgroundColor: "#52B788",
-    borderRadius: 16,
-    padding: 16,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  addPhotoBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "bold" },
-  timelineItem: {
-    flexDirection: "row",
-    marginBottom: 8,
-  },
-  timelineLeft: { alignItems: "center", width: 30, marginRight: 12 },
-  timelineDot: { width: 14, height: 14, borderRadius: 7 },
-  timelineLine: {
-    flex: 1,
-    width: 2,
-    backgroundColor: "#2A3F52",
-    marginTop: 4,
-  },
-  timelineContent: { flex: 1, paddingBottom: 16 },
-  timelineDate: { color: "#A8DADC", fontSize: 11, marginBottom: 6 },
-  timelineCard: {
-    backgroundColor: "#1B2A3B",
-    borderRadius: 14,
-    padding: 14,
-  },
-  timelineHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  timelineCondition: { color: "#FFFFFF", fontSize: 14, fontWeight: "bold" },
-  severityBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  severityBadgeText: { fontSize: 11, fontWeight: "bold" },
-  timelineNote: { color: "#A8DADC", fontSize: 12, marginBottom: 10 },
-  timelinePhoto: {
-    backgroundColor: "#0D1B2A",
-    borderRadius: 10,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  timelinePhotoIcon: { fontSize: 20 },
-  timelinePhotoText: { color: "#666", fontSize: 12 },
-  summaryCard: {
-    backgroundColor: "#1B2A3B",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 30,
-  },
-  summaryTitle: {
-    color: "#FFFFFF",
-    fontSize: 15,
+  compareDate: { color: "#A8DADC", fontSize: 11, marginTop: 4 },
+  compareConf: {
+    color: "#52B788",
+    fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 8,
+    marginTop: 6,
   },
-  summaryText: {
+  arrow: { color: "#52B788", fontSize: 24, marginHorizontal: 8 },
+  compareNote: {
     color: "#A8DADC",
     fontSize: 13,
+    textAlign: "center",
+    marginTop: 16,
+    lineHeight: 19,
+  },
+  timelineCard: {
+    backgroundColor: "#1B2A3B",
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 16,
+  },
+  timelineRow: { flexDirection: "row", marginBottom: 16 },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#52B788",
+    marginTop: 4,
+    marginRight: 14,
+  },
+  timelineContent: { flex: 1 },
+  timelineCondition: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
+  timelineDate: { color: "#A8DADC", fontSize: 12, marginTop: 3 },
+  emptyCard: {
+    backgroundColor: "#1B2A3B",
+    borderRadius: 16,
+    padding: 30,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  emptyIcon: { fontSize: 40, marginBottom: 12 },
+  emptyText: {
+    color: "#A8DADC",
+    fontSize: 14,
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 16,
   },
-  routineBtn: {
+  scanBtn: {
     backgroundColor: "#52B788",
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 16,
+    padding: 16,
     alignItems: "center",
   },
-  routineBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "bold" },
+  scanBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "bold" },
 });
