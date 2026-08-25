@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   TextInput,
@@ -10,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { auth, db } from "../firebaseConfig";
+import { useLanguage } from "../LanguageContext";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -18,6 +20,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { Alert, ActivityIndicator } from "react-native";
 
 export default function LoginScreen({ navigation }) {
+  const { t, lang, setLang } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -88,9 +91,46 @@ export default function LoginScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Logo */}
         <View style={styles.logoSection}>
-          <Text style={styles.logo}>🌿</Text>
+          <Image
+            source={require("../assets/logo.png")}
+            style={styles.logoImage}
+          />
           <Text style={styles.appName}>TropiHair</Text>
-          <Text style={styles.tagline}>Smart Scalp & Hair Care</Text>
+          <Text style={styles.tagline}>{t("tagline")}</Text>
+        </View>
+
+        {/* Language Switcher */}
+        <View style={styles.langRow}>
+          <TouchableOpacity
+            style={[styles.langBtn, lang === "en" && styles.langBtnActive]}
+            onPress={() => setLang("en")}
+          >
+            <Text
+              style={[styles.langText, lang === "en" && styles.langTextActive]}
+            >
+              English
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.langBtn, lang === "ta" && styles.langBtnActive]}
+            onPress={() => setLang("ta")}
+          >
+            <Text
+              style={[styles.langText, lang === "ta" && styles.langTextActive]}
+            >
+              தமிழ்
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.langBtn, lang === "si" && styles.langBtnActive]}
+            onPress={() => setLang("si")}
+          >
+            <Text
+              style={[styles.langText, lang === "si" && styles.langTextActive]}
+            >
+              සිංහල
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Tab Toggle */}
@@ -100,7 +140,7 @@ export default function LoginScreen({ navigation }) {
             onPress={() => setIsLogin(true)}
           >
             <Text style={[styles.tabText, isLogin && styles.tabTextActive]}>
-              Login
+              {t("login")}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -108,7 +148,7 @@ export default function LoginScreen({ navigation }) {
             onPress={() => setIsLogin(false)}
           >
             <Text style={[styles.tabText, !isLogin && styles.tabTextActive]}>
-              Sign Up
+              {t("signup")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -116,23 +156,21 @@ export default function LoginScreen({ navigation }) {
         {/* Form Card */}
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>
-            {isLogin ? "👋 Welcome Back!" : "🌿 Create Account"}
+            {isLogin ? t("welcomeBack") : t("createAccount")}
           </Text>
           <Text style={styles.formSubtitle}>
-            {isLogin
-              ? "Login to continue your hair care journey"
-              : "Join TropiHair for personalized hair care"}
+            {isLogin ? t("loginSubtitle") : t("signupSubtitle")}
           </Text>
 
           {/* Name field (signup only) */}
           {!isLogin && (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Full Name</Text>
+              <Text style={styles.inputLabel}>{t("fullName")}</Text>
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputIcon}>👤</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter your name"
+                  placeholder={t("enterName")}
                   placeholderTextColor="#666"
                   value={name}
                   onChangeText={setName}
@@ -143,12 +181,12 @@ export default function LoginScreen({ navigation }) {
 
           {/* Email */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={styles.inputLabel}>{t("emailAddress")}</Text>
             <View style={styles.inputWrapper}>
               <Text style={styles.inputIcon}>📧</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your email"
+                placeholder={t("enterEmail")}
                 placeholderTextColor="#666"
                 value={email}
                 onChangeText={setEmail}
@@ -160,12 +198,12 @@ export default function LoginScreen({ navigation }) {
 
           {/* Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password</Text>
+            <Text style={styles.inputLabel}>{t("password")}</Text>
             <View style={styles.inputWrapper}>
               <Text style={styles.inputIcon}>🔒</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your password"
+                placeholder={t("enterPassword")}
                 placeholderTextColor="#666"
                 value={password}
                 onChangeText={setPassword}
@@ -180,7 +218,7 @@ export default function LoginScreen({ navigation }) {
           {/* Forgot Password */}
           {isLogin && (
             <TouchableOpacity style={styles.forgotRow}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
+              <Text style={styles.forgotText}>{t("forgotPassword")}</Text>
             </TouchableOpacity>
           )}
 
@@ -194,7 +232,7 @@ export default function LoginScreen({ navigation }) {
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.submitBtnText}>
-                {isLogin ? "🚀 Login" : "✅ Create Account"}
+                {isLogin ? t("loginBtn") : t("createBtn")}
               </Text>
             )}
           </TouchableOpacity>
@@ -202,28 +240,26 @@ export default function LoginScreen({ navigation }) {
           {/* Divider */}
           <View style={styles.dividerRow}>
             <View style={styles.divider} />
-            <Text style={styles.dividerText}>or</Text>
+            <Text style={styles.dividerText}>{t("or")}</Text>
             <View style={styles.divider} />
           </View>
 
           {/* Google Sign In */}
           <TouchableOpacity style={styles.googleBtn}>
-            <Text style={styles.googleBtnText}>🔵 Continue with Google</Text>
+            <Text style={styles.googleBtnText}>{t("continueGoogle")}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Switch mode */}
         <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
           <Text style={styles.switchText}>
-            {isLogin
-              ? "Don't have an account? Sign Up"
-              : "Already have an account? Login"}
+            {isLogin ? t("noAccount") : t("haveAccount")}
           </Text>
         </TouchableOpacity>
 
         {/* Skip */}
         <TouchableOpacity onPress={() => navigation.replace("Onboarding")}>
-          <Text style={styles.skipText}>Skip for now</Text>
+          <Text style={styles.skipText}>{t("skipForNow")}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -238,10 +274,28 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 30,
   },
-  logoSection: { alignItems: "center", marginBottom: 30 },
+  logoSection: { alignItems: "center", marginBottom: 20 },
   logo: { fontSize: 56, marginBottom: 8 },
+  logoImage: { width: 90, height: 90, resizeMode: "contain", marginBottom: 8 },
   appName: { fontSize: 32, fontWeight: "bold", color: "#52B788" },
   tagline: { fontSize: 13, color: "#A8DADC", marginTop: 4 },
+  langRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 24,
+  },
+  langBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "#1B2A3B",
+    borderWidth: 1,
+    borderColor: "#2A3F52",
+  },
+  langBtnActive: { backgroundColor: "#52B788", borderColor: "#52B788" },
+  langText: { color: "#A8DADC", fontSize: 13, fontWeight: "600" },
+  langTextActive: { color: "#FFFFFF" },
   tabRow: {
     flexDirection: "row",
     backgroundColor: "#1B2A3B",

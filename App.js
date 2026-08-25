@@ -24,7 +24,9 @@ import BeforeAfterScreen from "./screens/BeforeAfterScreen";
 import NotificationsScreen from "./screens/NotificationsScreen";
 import ProductsScreen from "./screens/ProductsScreen";
 import FlareForecastScreen from "./screens/FlareForecastScreen";
+import ProductCheckerScreen from "./screens/ProductCheckerScreen";
 import ChatBot from "./ChatBot";
+import { LanguageProvider } from "./LanguageContext";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -82,44 +84,50 @@ export default function App() {
   };
 
   return (
-    <NavigationContainer
-      ref={navigationRef}
-      onReady={handleRouteChange}
-      onStateChange={handleRouteChange}
-    >
-      <Stack.Navigator
-        initialRouteName="Login"
-        screenOptions={{ headerShown: false }}
+    <LanguageProvider>
+      <NavigationContainer
+        ref={navigationRef}
+        onReady={handleRouteChange}
+        onStateChange={handleRouteChange}
       >
-        <Stack.Screen
-          name="DoctorConsultation"
-          component={DoctorConsultationScreen}
-        />
-        <Stack.Screen name="BeforeAfter" component={BeforeAfterScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        <Stack.Screen
-          name="HairLossAssessment"
-          component={HairLossAssessmentScreen}
-        />
-        <Stack.Screen
-          name="IngredientScanner"
-          component={IngredientScannerScreen}
-        />
-        <Stack.Screen name="Weather" component={WeatherScreen} />
-        <Stack.Screen name="Notifications" component={NotificationsScreen} />
-        <Stack.Screen name="Products" component={ProductsScreen} />
-        <Stack.Screen name="FlareForecast" component={FlareForecastScreen} />
-        <Stack.Screen name="Main" component={MainTabs} />
-        <Stack.Screen name="Results" component={ResultsScreen} />
-        <Stack.Screen
-          name="Recommendations"
-          component={RecommendationsScreen}
-        />
-      </Stack.Navigator>
+        <Stack.Navigator
+          initialRouteName="Login"
+          screenOptions={{ headerShown: false }}
+        >
+          <Stack.Screen
+            name="DoctorConsultation"
+            component={DoctorConsultationScreen}
+          />
+          <Stack.Screen name="BeforeAfter" component={BeforeAfterScreen} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          <Stack.Screen
+            name="HairLossAssessment"
+            component={HairLossAssessmentScreen}
+          />
+          <Stack.Screen
+            name="IngredientScanner"
+            component={IngredientScannerScreen}
+          />
+          <Stack.Screen name="Weather" component={WeatherScreen} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
+          <Stack.Screen name="Products" component={ProductsScreen} />
+          <Stack.Screen name="FlareForecast" component={FlareForecastScreen} />
+          <Stack.Screen
+            name="ProductChecker"
+            component={ProductCheckerScreen}
+          />
+          <Stack.Screen name="Main" component={MainTabs} />
+          <Stack.Screen name="Results" component={ResultsScreen} />
+          <Stack.Screen
+            name="Recommendations"
+            component={RecommendationsScreen}
+          />
+        </Stack.Navigator>
 
-      {/* Floating chatbot - hidden on Login / Onboarding screens */}
-      {!HIDDEN_SCREENS.includes(routeName) && <ChatBot />}
-    </NavigationContainer>
+        {/* Floating chatbot - hidden on Login / Onboarding screens */}
+        {!HIDDEN_SCREENS.includes(routeName) && <ChatBot />}
+      </NavigationContainer>
+    </LanguageProvider>
   );
 }

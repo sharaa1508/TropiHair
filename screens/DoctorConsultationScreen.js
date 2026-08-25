@@ -7,11 +7,14 @@ import {
   ScrollView,
   TextInput,
   Linking,
+  Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function DoctorConsultationScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("doctors");
   const [searchText, setSearchText] = useState("");
+  const insets = useSafeAreaInsets();
 
   const doctors = [
     {
@@ -95,8 +98,50 @@ export default function DoctorConsultationScreen({ navigation }) {
     Linking.openURL(`tel:${phone}`);
   };
 
+  // Build a plain-text health report to share
+  const buildReportText = () => {
+    return [
+      "*TropiHair Health Report*",
+      "",
+      `Condition: ${healthReport.condition}`,
+      `Severity: ${healthReport.severity}`,
+      `Last Scan: ${healthReport.lastScan}`,
+      `Hair Type: ${healthReport.hairType}`,
+      `Scalp Type: ${healthReport.scalpType}`,
+      "",
+      "Current Treatment:",
+      ...healthReport.recommendations.map((r) => `- ${r}`),
+      "",
+      "Shared from the TropiHair app.",
+    ].join("\n");
+  };
+
+  // Share via WhatsApp (wa.me works whether or not the scheme is registered)
+  const shareWhatsApp = () => {
+    const text = buildReportText();
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    Linking.openURL(url).catch(() =>
+      Alert.alert("Error", "Could not open WhatsApp. Is it installed?"),
+    );
+  };
+
+  // Share via Email
+  const shareEmail = () => {
+    const subject = "TropiHair Health Report";
+    const body = buildReportText().replace(/\*/g, "");
+    const url = `mailto:?subject=${encodeURIComponent(
+      subject,
+    )}&body=${encodeURIComponent(body)}`;
+    Linking.openURL(url).catch(() =>
+      Alert.alert("Error", "Could not open the email app."),
+    );
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+    >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -324,10 +369,10 @@ export default function DoctorConsultationScreen({ navigation }) {
           </View>
 
           {/* Share Buttons */}
-          <TouchableOpacity style={styles.whatsappBtn}>
+          <TouchableOpacity style={styles.whatsappBtn} onPress={shareWhatsApp}>
             <Text style={styles.whatsappBtnText}>💬 Share via WhatsApp</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.emailBtn}>
+          <TouchableOpacity style={styles.emailBtn} onPress={shareEmail}>
             <Text style={styles.emailBtnText}>📧 Share via Email</Text>
           </TouchableOpacity>
         </View>
@@ -514,7 +559,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: "#52B788",
   },

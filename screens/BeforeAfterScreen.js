@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { auth, db } from "../firebaseConfig";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
@@ -14,6 +15,7 @@ export default function BeforeAfterScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("compare");
   const [scans, setScans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadScans();
@@ -63,7 +65,10 @@ export default function BeforeAfterScreen({ navigation }) {
       : 0;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+    >
       {/* Header with Back + Home */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -217,8 +222,6 @@ export default function BeforeAfterScreen({ navigation }) {
           </TouchableOpacity>
         </>
       )}
-
-      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }

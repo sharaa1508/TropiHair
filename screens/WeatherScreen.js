@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const API_KEY = "e2c3def2faecbb2cb68da8c30e02cc50";
 
@@ -15,6 +16,7 @@ export default function WeatherScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [city, setCity] = useState("Negombo");
+  const insets = useSafeAreaInsets();
 
   const cities = [
     "Colombo",
@@ -117,7 +119,10 @@ export default function WeatherScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+    >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -398,7 +403,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: "#52B788",
   },

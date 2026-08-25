@@ -12,7 +12,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 
 // ⚠️ IMPORTANT: Replace with YOUR laptop's WiFi IPv4 address
-const API_URL = "http://192.168.8.105:8000";
+const API_URL = "http://192.168.8.100:8000";
 
 export default function ScanScreen({ navigation }) {
   const [selectedImage, setSelectedImage] = useState(null);
